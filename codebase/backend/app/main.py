@@ -1,8 +1,13 @@
 import os
 import shutil
+from pathlib import Path
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from docling.document_converter import DocumentConverter
+# from docling.document_converter import DocumentConverter
+
+BACKEND_DIR = Path(__file__).resolve().parent.parent
+UPLOAD_DIR = BACKEND_DIR / "temp_uploads"
+UPLOAD_DIR.mkdir(exist_ok=True)
 
 app = FastAPI(
     title="AI in Action Hackathon API",
@@ -29,11 +34,12 @@ def health_check():
 
 @app.post("/api/upload-slide")
 async def upload_slide(file: UploadFile = File(...)):
-    # Tạo thư mục temp nếu chưa có
-    os.makedirs("temp_uploads", exist_ok=True)
-    file_path = os.path.join("temp_uploads", file.filename)
-    
-    # Lưu file tạm thời
+    safe_name = Path(file.filename or "upload").stem
+    file_path = UPLOAD_DIR / f"{safe_name}.pdf"
+    md_file_path = UPLOAD_DIR / f"{safe_name}.md"
+    html_file_path = UPLOAD_DIR / f"{safe_name}.html"
+
+    # Lưu file tạm thời vào thư mục backend/temp_uploads
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
         
@@ -137,8 +143,7 @@ async def upload_slide(file: UploadFile = File(...)):
             outline_html += "</li>"
         outline_html += "</ul>"
         
-        # Lưu lại file Markdown vào thư mục temp_uploads
-        md_file_path = file_path.replace(".pdf", ".md")
+        # Lưu lại file Markdown vào thư mục backend/temp_uploads
         with open(md_file_path, "w", encoding="utf-8") as f:
             f.write(markdown_text)
             
@@ -236,7 +241,6 @@ async def upload_slide(file: UploadFile = File(...)):
         </html>
         """
         
-        html_file_path = os.path.splitext(file_path)[0] + ".html"
         with open(html_file_path, "w", encoding="utf-8") as f:
             f.write(full_html)
         
@@ -244,11 +248,7 @@ async def upload_slide(file: UploadFile = File(...)):
             "status": "success", 
             "markdown": markdown_text, 
             "html": html_content,
-            "html_file_path": html_file_path
+            "html_file_path": str(html_file_path)
         }
     except Exception as e:
         return {"status": "error", "message": str(e)}
-    finally:
-        # Dọn dẹp file tạm
-        if os.path.exists(file_path):
-            os.remove(file_path)

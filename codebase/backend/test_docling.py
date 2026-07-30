@@ -1,5 +1,5 @@
 import json
-from docling.document_converter import DocumentConverter
+# from docling.document_converter import DocumentConverter
 
 converter = DocumentConverter()
 res = converter.convert("temp_uploads/d2-slide-hackathon.pdf")
